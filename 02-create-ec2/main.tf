@@ -10,8 +10,8 @@ terraform {
 }
 
 provider "aws" {
-  access_key = "AKIAXMMS6CFGISGR5Q43"
-  secret_key = "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"
+  access_key = "AKIAXMMS6CFGIU357JEO"
+  secret_key = "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"
   region     = "ap-northeast-2"
 }
 
@@ -20,6 +20,6 @@ resource "aws_instance" "app_server" {
   instance_type = "t2.micro"
 
   tags = {
-    Name = "ExampleAppServerInstance"
+    Name = "ExampleAppServerInstance2"
   }
 }

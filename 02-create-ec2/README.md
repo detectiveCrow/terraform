@@ -25,3 +25,9 @@ terraform apply
 ```
 terraform show
 ```
+
+## Destroy infrastructure
+
+```
+terraform destroy
+```
