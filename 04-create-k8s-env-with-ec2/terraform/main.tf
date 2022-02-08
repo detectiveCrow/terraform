@@ -163,8 +163,10 @@ resource "aws_key_pair" "aws_key" {
   public_key = file("${var.ssh_public_key_path}")
 }
 
-# ---------- Kube Master ----------
-resource "aws_instance" "master" {
+# ---------- EC2 Instance ----------
+
+# ----- Kube Master -----
+resource "aws_spot_instance_request" "master" {
   count         = 1
   ami           = var.instance_ami
   instance_type = var.instance_type
@@ -172,8 +174,19 @@ resource "aws_instance" "master" {
 
   associate_public_ip_address = true # Instances have public, dynamic IP
 
+  # ----- VPC -----
   vpc_security_group_ids = ["${aws_security_group.k8s_kubeadm_sg.id}"]
   subnet_id              = aws_subnet.k8s_public_subnet_1.id
+
+  # ----- Spot Instance -----
+  wait_for_fulfillment = true
+  spot_type            = "one-time"
+
+  root_block_device {
+    volume_type           = "gp2"
+    volume_size           = "20"
+    delete_on_termination = true
+  }
 
   tags = {
     Owner                               = "${var.owner}"
@@ -183,8 +196,8 @@ resource "aws_instance" "master" {
   }
 }
 
-# ---------- Kube Workers ----------
-resource "aws_instance" "worker" {
+# ----- Kube Workers -----
+resource "aws_spot_instance_request" "worker" {
   count         = 1
   ami           = var.instance_ami
   instance_type = var.instance_type
@@ -192,8 +205,19 @@ resource "aws_instance" "worker" {
 
   associate_public_ip_address = true # Instances have public, dynamic IP
 
+  # ----- VPC -----
   vpc_security_group_ids = ["${aws_security_group.k8s_kubeadm_sg.id}"]
   subnet_id              = aws_subnet.k8s_public_subnet_1.id
+
+  # ----- Spot Instance -----
+  wait_for_fulfillment = true
+  spot_type            = "one-time"
+
+  root_block_device {
+    volume_type           = "gp2"
+    volume_size           = "10"
+    delete_on_termination = true
+  }
 
   tags = {
     Owner                               = "${var.owner}"
@@ -203,12 +227,36 @@ resource "aws_instance" "worker" {
   }
 }
 
+# # ---------- EBS Volume ----------
+# resource "aws_ebs_volume" "k8s_master1_ebs" {
+#   availability_zone = data.aws_availability_zones.available.names[0]
+#   size              = 20
+# }
+
+# resource "aws_ebs_volume" "k8s_worker1_ebs" {
+#   availability_zone = data.aws_availability_zones.available.names[0]
+#   size              = 10
+# }
+
+# # ---------- Volume Attachment ----------
+# resource "aws_volume_attachment" "k8s_master1_ebs_att" {
+#   device_name = "/dev/sdh"
+#   volume_id   = aws_ebs_volume.k8s_master1_ebs.id
+#   instance_id = aws_spot_instance_request.master.0.id
+# }
+
+# resource "aws_volume_attachment" "k8s_worker1_ebs_att" {
+#   device_name = "/dev/sdh"
+#   volume_id   = aws_ebs_volume.k8s_worker1_ebs.id
+#   instance_id = aws_spot_instance_request.worker.0.id
+# }
+
 # ---------- Outputs ----------
 output "kubernetes_master_public_ip" {
-  value = join(",", aws_instance.master.*.public_ip)
+  value = join(",", aws_spot_instance_request.master.*.public_ip)
 }
 output "kubernetes_workers_public_ip" {
-  value = join(",", aws_instance.worker.*.public_ip)
+  value = join(",", aws_spot_instance_request.worker.*.public_ip)
 }
 
 # ---------- Provision Ansible Inventory ---------- 
@@ -217,9 +265,9 @@ resource "null_resource" "tc_instances" {
     command = <<EOD
     cat <<EOF > kube_hosts
 [kubemaster]
-master ansible_host="${aws_instance.master.0.public_ip}" ansible_user=ubuntu
+master ansible_host="${aws_spot_instance_request.master.0.public_ip}" ansible_user=ubuntu
 [kubeworkers]
-worker1 ansible_host="${aws_instance.worker.0.public_ip}" ansible_user=ubuntu
+worker1 ansible_host="${aws_spot_instance_request.worker.0.public_ip}" ansible_user=ubuntu
 EOF
 EOD
   }
