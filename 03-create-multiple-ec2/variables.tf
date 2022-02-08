@@ -1,10 +1,6 @@
 # AWS ----------------------------------------
-variable "aws_access_key" {
-  default = "AKIAXMMS6CFGIU357JEO"
-}
-
-variable "aws_secret_key" {
-  default = "IG5dpLLZoq89Oaxf2PTrx01KVzyCyel5uWri/MWj"
+variable "aws_access_profile" {
+  default = "terraform"
 }
 
 variable "aws_region" {
