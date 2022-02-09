@@ -5,8 +5,8 @@ variable "aws_vpc_cidr" {}
 variable "aws_vpc_subnet_cidrs" {}
 
 # SSH ----------------------------------------
-variable "ssh_public_key_path" {}
-
+variable "ssh_key_path" {}
+variable "ssh_key_file" {}
 variable "ssh_key_name" {
   default = "ssh-key"
 }

@@ -160,7 +160,7 @@ resource "aws_security_group" "k8s_kubeadm_sg" {
 # ---------- Key Pair ----------
 resource "aws_key_pair" "aws_key" {
   key_name   = var.ssh_key_name
-  public_key = file("${var.ssh_public_key_path}")
+  public_key = file(format("%s/%s.pub",var.ssh_key_path,var.ssh_key_file))
 }
 
 # ---------- EC2 Instance ----------
@@ -258,6 +258,9 @@ output "kubernetes_master_public_ip" {
 output "kubernetes_workers_public_ip" {
   value = join(",", aws_spot_instance_request.worker.*.public_ip)
 }
+output "master_ssh_command" {
+  value = format("ssh -i %s/%s ubuntu@%s", var.ssh_key_path, var.ssh_key_file, aws_spot_instance_request.master.0.public_ip)
+}
 
 # ---------- Provision Ansible Inventory ---------- 
 resource "null_resource" "tc_instances" {
@@ -265,9 +268,9 @@ resource "null_resource" "tc_instances" {
     command = <<EOD
     cat <<EOF > kube_hosts
 [kubemaster]
-master ansible_host="${aws_spot_instance_request.master.0.public_ip}" ansible_user=ubuntu
+master ansible_host="${aws_spot_instance_request.master.0.public_ip}" ansible_user=ubuntu ansible_ssh_private_key_file=${format("%s/%s",var.ssh_key_path,var.ssh_key_file)}
 [kubeworkers]
-worker1 ansible_host="${aws_spot_instance_request.worker.0.public_ip}" ansible_user=ubuntu
+worker1 ansible_host="${aws_spot_instance_request.worker.0.public_ip}" ansible_user=ubuntu ansible_ssh_private_key_file=${format("%s/%s",var.ssh_key_path,var.ssh_key_file)}
 EOF
 EOD
   }
