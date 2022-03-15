@@ -1,12 +1,20 @@
-## EC2 spot 요청을 이용한 쿠버네티스 클러스터 구축
+# 01_single_public_private_cluster_with_bastion
 
-### 실행 전 기본 설정
+## 구성
+- vpc
+    - private subnet 1
+        - master node (ec2)
+        - worker node 1 (ec2)
+        - worker node 2 (ec2)
+    - public subnet 1
+        - bastion (ec2)
+        - nat gateway
 
-1. 설치 스크립트 실행
+## 테라폼 실행
 
-    ```
-    sh install.sh
-    ```
+1. 실행 필요요소 설치
+    - terraform
+
 
 2. aws.credentails 생성
 
@@ -31,22 +39,7 @@
     ssh-keygen -t rsa -b 4096 -N '' -f ~/.ssh/cluster-builder-key
     ```
 
-### 클러스터 생성 및 삭제
+## 참고
 
-- 클러스터 생성
-
-    ```
-    sh create.sh
-    ```
-
-    해당 커맨드에서 인스턴스 생성중에 앤서블 커맨드가 실행되면 에러가 발생함, 이럴 시에는 다시 위의 커맨드를 실행하면 문제없이 생성됨 
-
-- 클러스터 삭제
-
-    ```
-    sh destroy.sh
-    ```
-
-### 참고
-
-- [provider aws] https://registry.terraform.io/providers/hashicorp/aws/latest/docs#shared_credentials_files
+- [Terraform AWS Registry] https://registry.terraform.io/providers/hashicorp/aws/latest/docs
+- [Cloud Resource Naming Conventions] https://confluence.huit.harvard.edu/display/CLA/Cloud+Resource+Naming+Conventions
