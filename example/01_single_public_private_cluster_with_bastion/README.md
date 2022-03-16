@@ -39,6 +39,27 @@
     ssh-keygen -t rsa -b 4096 -N '' -f ~/.ssh/cluster-builder-key
     ```
 
+## 접속
+
+### 접속 방법
+- Bastion Host 에 접속
+    ```
+    ssh ubuntu@[bastion ip] -i [ssh_key_path]/[ssh_key_name]
+    ```
+- Bastion Host에 key 파일 복사
+- Node에 접속
+    ```
+    ssh ubuntu@[node ip] -i [ssh_key_path]/[ssh_key_name]
+    ```
+
+### 에러 대응
+- WARNING: UNPROTECTED PRIVATE KEY FILE!
+    ```
+    # 다음과 같이 group 과 other 의 모든 권한을 막아주면 됨.
+
+    chmod 0400 [ssh_key_path]/[ssh_key_name]
+    ```
+
 ## 참고
 
 - [Terraform AWS Registry] https://registry.terraform.io/providers/hashicorp/aws/latest/docs

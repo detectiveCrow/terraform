@@ -96,11 +96,73 @@ resource "aws_route_table_association" "private_subnet_association" {
   route_table_id = aws_route_table.private_rt.id
 }
 
-# Create a Security Group
-resource "aws_security_group" "security_group" {
-  name        = "${var.cluster_name}-sg"
-  description = "Security Group for ${var.cluster_name}"
+# Create a Key Pair
+resource "aws_key_pair" "aws_key" {
+  key_name   = var.ssh_key_name
+  public_key = file(format("%s/%s.pub", var.ssh_key_path, var.ssh_key_name))
+}
+
+# Create a Bastion Host Security Group
+resource "aws_security_group" "bastion_security_group" {
+  name        = "${var.cluster_name}-bastion-sg"
+  description = "Security Group for ${var.cluster_name} Bastion Host"
   vpc_id      = aws_vpc.vpc.id
+
+  # --- SSH ---
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = -1
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.cluster_name}-bastion-sg"
+  }
+}
+
+# Create Bastion Host Instance
+resource "aws_instance" "bastion" {
+  ami           = var.instance_ami
+  instance_type = var.instance_type
+  key_name      = var.ssh_key_name
+
+  associate_public_ip_address = true
+
+  vpc_security_group_ids = ["${aws_security_group.bastion_security_group.id}"]
+  subnet_id              = aws_subnet.public_subnet.id
+
+  root_block_device {
+    volume_type           = "gp2"
+    volume_size           = "10"
+    delete_on_termination = true
+  }
+
+  tags = {
+    Name = "${var.cluster_name}-bastion"
+  }
+}
+
+# Create a Cluster Security Group
+resource "aws_security_group" "cluster_security_group" {
+  name        = "${var.cluster_name}-cluster-sg"
+  description = "Security Group for ${var.cluster_name} Cluster"
+  vpc_id      = aws_vpc.vpc.id
+
+  # --- SSH ---
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["${aws_instance.bastion.private_ip}/32"]
+  }
 
   # --- Kubelet API ---
   ingress {
@@ -114,14 +176,6 @@ resource "aws_security_group" "security_group" {
   ingress {
     from_port   = 6443
     to_port     = 6443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # --- SSH ---
-  ingress {
-    from_port   = 22
-    to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -142,12 +196,46 @@ resource "aws_security_group" "security_group" {
   }
 
   tags = {
-    Name = "${var.cluster_name}-sg"
+    Name = "${var.cluster_name}-cluster-sg"
   }
 }
 
-# Create a Key Pair
-resource "aws_key_pair" "aws_key" {
-  key_name   = var.ssh_key_name
-  public_key = file(format("%s/%s.pub", var.ssh_key_path, var.ssh_key_name))
+# Create Master Node Instance
+resource "aws_instance" "master" {
+  ami           = var.instance_ami
+  instance_type = var.instance_type
+  key_name      = var.ssh_key_name
+
+  vpc_security_group_ids = ["${aws_security_group.cluster_security_group.id}"]
+  subnet_id              = aws_subnet.private_subnet.id
+
+  root_block_device {
+    volume_type           = "gp2"
+    volume_size           = "20"
+    delete_on_termination = true
+  }
+
+  tags = {
+    Name = "${var.cluster_name}-master"
+  }
+}
+
+# Create Worker Node Instance
+resource "aws_instance" "worker" {
+  ami           = var.instance_ami
+  instance_type = var.instance_type
+  key_name      = var.ssh_key_name
+
+  vpc_security_group_ids = ["${aws_security_group.cluster_security_group.id}"]
+  subnet_id              = aws_subnet.private_subnet.id
+
+  root_block_device {
+    volume_type           = "gp2"
+    volume_size           = "20"
+    delete_on_termination = true
+  }
+
+  tags = {
+    Name = "${var.cluster_name}-worker"
+  }
 }
